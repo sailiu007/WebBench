@@ -26,26 +26,51 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+void PrintHostentInfo(struct hostent *hp) 
+{
+    char **pptr;
+    char address[INET_ADDRSTRLEN + 1] = {0};
+
+
+    printf("official hostname:%s\n", hp->h_name);
+
+	for(pptr = hp->h_aliases; *pptr != NULL; pptr++)
+		printf("alias:%s\n",*pptr);
+
+	for(pptr = hp->h_addr_list; *pptr != NULL; pptr++)
+		printf("address:%s\n",inet_ntop(hp->h_addrtype, *pptr, address, sizeof(address)));
+	
+    printf("first address: %s\n",inet_ntop(hp->h_addrtype, hp->h_addr, address, sizeof(address)));				
+}
+
 int Socket(const char *host, int clientPort)
 {
+    int ret;
     int sock;
-    unsigned long inaddr;
+    // unsigned long inaddr;
     struct sockaddr_in ad;
     struct hostent *hp;
     
     memset(&ad, 0, sizeof(ad));
+    // AF_INET Ipv4
     ad.sin_family = AF_INET;
 
-    inaddr = inet_addr(host);
-    if (inaddr != INADDR_NONE)
-        memcpy(&ad.sin_addr, &inaddr, sizeof(inaddr));
-    else
+    // inaddr = inet_addr(host);
+    // if (inaddr != INADDR_NONE)
+    //     memcpy(&ad.sin_addr, &inaddr, sizeof(inaddr));
+    // else
+
+    // INADDR_NONE 可能是广播地址，注释掉原来的inet_addr换成inet_aton
+    ret = inet_aton(host, &ad.sin_addr);
+    if (ret != 1)
     {
         hp = gethostbyname(host);
         if (hp == NULL)
             return -1;
+        // PrintHostentInfo(hp);
         memcpy(&ad.sin_addr, hp->h_addr, hp->h_length);
     }
+    // 转网络字节序（大端），因为大小端问题，网络传输应该留意转换。
     ad.sin_port = htons(clientPort);
     
     sock = socket(AF_INET, SOCK_STREAM, 0);
